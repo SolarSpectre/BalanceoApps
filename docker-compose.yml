@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - servidor1
+      - maestro1
+      - esclavo1
+
+  servidor1:
+    container_name: Servidor1
+    build: 
+      context: ./servidor1
+      dockerfile: Dockerfile
+    environment:
+      - MYSQL_HOST=maestro1
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DB=db_informacion
+      - MYSQL_PORT=3306
+  servidor2:
+    container_name: Servidor2
+    build: 
+      context: ./servidor2
+      dockerfile: Dockerfile
+    environment:
+      - MYSQL_HOST=maestro1
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DB=db_informacion
+      - MYSQL_PORT=3306
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    environment:
+      PMA_HOSTS: "maestro1,esclavo1"
+      PMA_ARBITRARY: 1
+    ports:
+      - "8081:80"
+    depends_on:
+      - maestro1
+      - esclavo1
+
+  maestro1:
+    build:
+      context: ./maestro1
+      dockerfile: Dockerfile
+    image: mysql:8.0
+    container_name: maestro1
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: db_informacion
+      LANG: en_US.UTF-8
+    ports:
+      - "3306:3306"
+    volumes:
+      - maestro1_data:/var/lib/mysql
+      - ./maestro1/my.cnf:/etc/mysql/my.cnf
+      - ./maestro1/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  esclavo1:
+    build:
+      context: ./esclavo1
+      dockerfile: Dockerfile
+    image: mysql:8.0
+    container_name: esclavo1
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: db_informacion
+      LANG: en_US.UTF-8
+    ports:
+      - "3307:3306"
+    volumes:
+      - esclavo1_data:/var/lib/mysql
+      - ./esclavo1/my.cnf:/etc/mysql/my.cnf
+      - ./esclavo1/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./esclavo1/init.sh:/docker-entrypoint-initdb.d/init.sh
+
+volumes:
+  maestro1_data:
+  esclavo1_data:
